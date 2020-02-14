@@ -14,6 +14,7 @@ namespace WarOfTheCosmos.NPCs.Boss
     {
         public const int NPC_STATE = 0;
         public const int PAUSE_TIMER = 1;
+        public const int COOLDOWN = 2;
 
         public enum States
         {
@@ -21,10 +22,10 @@ namespace WarOfTheCosmos.NPCs.Boss
             DashingFirstTime,
             DashingSecondTime,
             DashingThirdTime,
-            MovingToPlayer,
-            CirclingAroundPlayerFirstTime,
-            CirclingAroundPlayerSecondTime,
-            CirclingAroundPlayerThirdTime,
+            //MovingToPlayer,
+            //CirclingAroundPlayerFirstTime,
+            //CirclingAroundPlayerSecondTime,
+            //CirclingAroundPlayerThirdTime,
         }
 
         public override void SetStaticDefaults()
@@ -73,17 +74,19 @@ namespace WarOfTheCosmos.NPCs.Boss
                     DashingFirstTime();
                     break;
                 case States.DashingSecondTime:
+                    DashingSecondTime();
                     break;
                 case States.DashingThirdTime:
+                    DashingThirdTime();
                     break;
-                case States.MovingToPlayer:
-                    break;
-                case States.CirclingAroundPlayerFirstTime:
-                    break;
-                case States.CirclingAroundPlayerSecondTime:
-                    break;
-                case States.CirclingAroundPlayerThirdTime:
-                    break;
+                //case States.MovingToPlayer:
+                   //break;
+               //case States.CirclingAroundPlayerFirstTime:
+                    //break;
+                //case States.CirclingAroundPlayerSecondTime:
+                    //break;
+                //case States.CirclingAroundPlayerThirdTime:
+                    //break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -91,6 +94,7 @@ namespace WarOfTheCosmos.NPCs.Boss
             //Dash at the player
             //Dash at the player
             //Dash at the player
+
             //Move above the player
             //Move in a circle around the player
             //While circling the player fire a project
@@ -113,6 +117,7 @@ namespace WarOfTheCosmos.NPCs.Boss
             //var move = moveTo - npc.Center; //this is how much your boss wants to move
             //var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y); //fun with the Pythagorean Theorem
             //npc.velocity = move * (speed / (float) magnitude);
+            npc.ai[COOLDOWN]++;
             var player = Main.player[npc.target];
             var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
             float turnResistance = 100f; //the larger this is, the slower the npc will turn
@@ -133,20 +138,20 @@ namespace WarOfTheCosmos.NPCs.Boss
             }
             npc.velocity = move;
 
-            if (magnitude < 300)
+            if ((magnitude < 50) && (npc.ai[COOLDOWN] > 180)) //180 wait time
             {
                 npc.ai[NPC_STATE] = (int)States.DashingFirstTime;
-                npc.ai[PAUSE_TIMER] = 0;
+                npc.ai[PAUSE_TIMER] = 30;
             }
         }
 
-        private void DashingFirstTime()
+        private void DashingFirstTime()  
         {
             npc.ai[PAUSE_TIMER]++;
 
-            if (npc.ai[PAUSE_TIMER] <= 300)
+            if (npc.ai[PAUSE_TIMER] <= 45)
             {
-                return; //Wait for 30 ticks
+                return; //Wait for 45 ticks
             }
 
             var player = Main.player[npc.target];
@@ -157,6 +162,53 @@ namespace WarOfTheCosmos.NPCs.Boss
             var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
             move *= (speed / (float) magnitude);
             npc.velocity = move;
+            npc.ai[PAUSE_TIMER] = 0;
+            npc.ai[NPC_STATE] = (int)States.DashingSecondTime;
+            //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
+        }
+
+        private void DashingSecondTime()
+        {
+            npc.ai[PAUSE_TIMER]++;
+
+            if (npc.ai[PAUSE_TIMER] <= 45)
+            {
+                return; //Wait for 45 ticks
+            }
+
+            var player = Main.player[npc.target];
+            var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
+
+            var speed = 30f; //Charging is fast.
+            var move = moveTo - npc.Center;
+            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+            move *= (speed / (float)magnitude);
+            npc.velocity = move;
+            npc.ai[PAUSE_TIMER] = 0;
+            npc.ai[NPC_STATE] = (int)States.DashingThirdTime;
+            //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
+        }
+
+        private void DashingThirdTime()
+        {
+            npc.ai[PAUSE_TIMER]++;
+
+            if (npc.ai[PAUSE_TIMER] <= 45)
+            {
+                return; //Wait for 45 ticks
+            }
+
+            var player = Main.player[npc.target];
+            var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
+
+            var speed = 30f; //Charging is fast.
+            var move = moveTo - npc.Center;
+            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+            move *= (speed / (float)magnitude);
+            npc.velocity = move;
+            npc.ai[PAUSE_TIMER] = 0;
+            npc.ai[COOLDOWN] = 0;
+            npc.ai[NPC_STATE] = (int)States.FloatTowards;
             //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
         }
     }
