@@ -32,7 +32,7 @@ namespace WarOfTheCosmos.NPCs.Boss
         }
         public override void SetDefaults()
         {
-            npc.aiStyle = (int) AIStyles.CustomAI;
+            npc.aiStyle = (int)AIStyles.CustomAI;
             npc.lifeMax = 15000;
             npc.damage = 50;
             npc.defense = 30;
@@ -52,7 +52,7 @@ namespace WarOfTheCosmos.NPCs.Boss
             npc.buffImmune[24] = true;
             music = mod.GetSoundSlot(SoundType.Music, "Sounds/Music/Fall");
 
-            npc.ai[NPC_STATE] = (int) States.FloatTowards;
+            npc.ai[NPC_STATE] = (int)States.FloatTowards;
         }
 
         public override void ScaleExpertStats(int numPlayers, float bossLifeScale)
@@ -69,6 +69,7 @@ namespace WarOfTheCosmos.NPCs.Boss
                     FloatTowardsPlayer();
                     break;
                 case States.DashingFirstTime:
+                    npc.TargetClosest();
                     break;
                 case States.DashingSecondTime:
                     break;
@@ -104,13 +105,45 @@ namespace WarOfTheCosmos.NPCs.Boss
 
         private void FloatTowardsPlayer()
         {
+            //var player = Main.player[npc.target];
+            //var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
+
+            //var speed = 1f; //make this whatever you want
+            //var move = moveTo - npc.Center; //this is how much your boss wants to move
+            //var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y); //fun with the Pythagorean Theorem
+            //npc.velocity = move * (speed / (float) magnitude);
+            var player = Main.player[npc.target];
+            var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
+            float turnResistance = 100f; //the larger this is, the slower the npc will turn
+
+            var speed = 20f;
+            var move = moveTo - npc.Center;
+            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+            if (magnitude > speed)
+            {
+                move *= (speed / (float)magnitude);
+            }
+            move = (npc.velocity * turnResistance + move) / (turnResistance + 1f);
+            magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+            if (magnitude > speed)
+            {
+                move *= (speed / (float)magnitude);
+            }
+            npc.velocity = move;
+        }
+
+        private void DashingFirstTime()
+        {
             var player = Main.player[npc.target];
             var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
 
-            var speed = 1f; //make this whatever you want
-            var move = moveTo - npc.Center; //this is how much your boss wants to move
-            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y); //fun with the Pythagorean Theorem
-            npc.velocity = move * (speed / (float) magnitude);
+            var speed = 30f; //Charging is fast.
+            var move = moveTo - npc.Center;
+            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+            move *= (speed / (float) magnitude);
+            npc.velocity = move;
+            States.DashingFirstTime = 60f; //This is the time before the NPC will start another charge.
+            //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
         }
     }
 }
