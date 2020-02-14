@@ -1,0 +1,3 @@
+displayName = War of the Cosmos
+author = Astrum Ignis
+version = 0.1
