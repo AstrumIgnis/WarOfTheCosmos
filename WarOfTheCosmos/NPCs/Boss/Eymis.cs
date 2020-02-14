@@ -13,6 +13,7 @@ namespace WarOfTheCosmos.NPCs.Boss
     public class Eymis : ModNPC
     {
         public const int NPC_STATE = 0;
+        public const int PAUSE_TIMER = 1;
 
         public enum States
         {
@@ -69,7 +70,7 @@ namespace WarOfTheCosmos.NPCs.Boss
                     FloatTowardsPlayer();
                     break;
                 case States.DashingFirstTime:
-                    npc.TargetClosest();
+                    DashingFirstTime();
                     break;
                 case States.DashingSecondTime:
                     break;
@@ -119,6 +120,7 @@ namespace WarOfTheCosmos.NPCs.Boss
             var speed = 20f;
             var move = moveTo - npc.Center;
             var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+
             if (magnitude > speed)
             {
                 move *= (speed / (float)magnitude);
@@ -130,10 +132,23 @@ namespace WarOfTheCosmos.NPCs.Boss
                 move *= (speed / (float)magnitude);
             }
             npc.velocity = move;
+
+            if (magnitude < 300)
+            {
+                npc.ai[NPC_STATE] = (int)States.DashingFirstTime;
+                npc.ai[PAUSE_TIMER] = 0;
+            }
         }
 
         private void DashingFirstTime()
         {
+            npc.ai[PAUSE_TIMER]++;
+
+            if (npc.ai[PAUSE_TIMER] <= 300)
+            {
+                return; //Wait for 30 ticks
+            }
+
             var player = Main.player[npc.target];
             var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
 
@@ -142,7 +157,6 @@ namespace WarOfTheCosmos.NPCs.Boss
             var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
             move *= (speed / (float) magnitude);
             npc.velocity = move;
-            States.DashingFirstTime = 60f; //This is the time before the NPC will start another charge.
             //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
         }
     }
