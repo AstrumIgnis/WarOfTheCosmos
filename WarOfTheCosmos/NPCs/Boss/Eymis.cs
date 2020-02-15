@@ -15,6 +15,7 @@ namespace WarOfTheCosmos.NPCs.Boss
         public const int NPC_STATE = 0;
         public const int PAUSE_TIMER = 1;
         public const int COOLDOWN = 2;
+        public const int LASER_TIMER = 3;
 
         public enum States
         {
@@ -36,7 +37,7 @@ namespace WarOfTheCosmos.NPCs.Boss
         {
             npc.aiStyle = (int)AIStyles.CustomAI;
             npc.lifeMax = 15000;
-            npc.damage = 50;
+            npc.damage = 80;
             npc.defense = 30;
             npc.knockBackResist = 0f;
             npc.width = 100;
@@ -61,6 +62,10 @@ namespace WarOfTheCosmos.NPCs.Boss
         {
             npc.lifeMax = (int)(npc.lifeMax * 0.579f * bossLifeScale);
             npc.damage = (int)(npc.damage * 0.6f);
+        }
+        public override void BossLoot(ref string name, ref int potionType)
+        {
+            potionType = ItemID.HealingPotion;
         }
         public override void AI()
         {
@@ -88,24 +93,14 @@ namespace WarOfTheCosmos.NPCs.Boss
                 //case States.CirclingAroundPlayerThirdTime:
                     //break;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(); 
             }
             //FloatsTowardsPlayer
             //Dash at the player
             //Dash at the player
             //Dash at the player
-
-            //Move above the player
-            //Move in a circle around the player
-            //While circling the player fire a project
-            //While circling the player summon a minion
-            //Move in a circle around the player
-            //While circling the player fire a project
-            //While circling the player summon a minion
-            //Move in a circle around the player
-            //While circling the player fire a project
-            //While circling the player summon a minion
             //Start back at the top
+            //Shoot lasers the entire time
         }
 
         private void FloatTowardsPlayer()
@@ -119,6 +114,11 @@ namespace WarOfTheCosmos.NPCs.Boss
             //npc.velocity = move * (speed / (float) magnitude);
             npc.ai[COOLDOWN]++;
             var player = Main.player[npc.target];
+            if (npc.target < 0 || npc.target == 255 || Main.player[npc.target].dead || !Main.player[npc.target].active)
+            {
+                npc.TargetClosest(true);
+            }
+            npc.netUpdate = true;
             var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
             float turnResistance = 100f; //the larger this is, the slower the npc will turn
 
@@ -137,6 +137,20 @@ namespace WarOfTheCosmos.NPCs.Boss
                 move *= (speed / (float)magnitude);
             }
             npc.velocity = move;
+
+            //lasers
+            npc.ai[LASER_TIMER]++;
+            if (npc.ai[LASER_TIMER] >= 30)
+            {
+                float Speed = 30f;
+                Vector2 vector8 = new Vector2(npc.position.X + (npc.width / 2), npc.position.Y + (npc.height / 2));
+                int damage = 30;
+                int type = mod.ProjectileType("Elementdisc");
+                Main.PlaySound(SoundID.Item60, (int)npc.position.X, (int)npc.position.Y);
+                float rotation = (float)Math.Atan2(vector8.Y - (player.position.Y + (player.height * 0.5f)), vector8.X - (player.position.X + (player.width * 0.5f)));
+                int num54 = Projectile.NewProjectile(vector8.X, vector8.Y, (float)((Math.Cos(rotation) * Speed) * -1), (float)((Math.Sin(rotation) * Speed) * -1), type, damage, 0f, 0);
+                npc.ai[LASER_TIMER] = 0;
+            }
 
             if ((magnitude < 50) && (npc.ai[COOLDOWN] > 180)) //180 wait time
             {
@@ -209,7 +223,6 @@ namespace WarOfTheCosmos.NPCs.Boss
             npc.ai[PAUSE_TIMER] = 0;
             npc.ai[COOLDOWN] = 0;
             npc.ai[NPC_STATE] = (int)States.FloatTowards;
-            //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
         }
     }
 }

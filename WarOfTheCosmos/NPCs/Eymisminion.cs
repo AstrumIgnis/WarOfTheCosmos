@@ -43,7 +43,7 @@ namespace WarOfTheCosmos.NPCs
         public override void NPCLoot()
         {
             {
-                Item.NewItem((int)npc.position.X, (int)npc.position.Y, npc.width, npc.height, mod.ItemType("Elementalessence"), 2);
+                Item.NewItem((int)npc.position.X, (int)npc.position.Y, npc.width, npc.height, mod.ItemType("Elementalessence"));
             }
         }
 

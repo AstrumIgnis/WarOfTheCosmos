@@ -24,7 +24,6 @@ namespace WarOfTheCosmos.Projectiles
         {
             if (projectile.localAI[0] == 0f)
             {
-                Main.PlaySound(SoundID.Pixie, (int)projectile.position.X, (int)projectile.position.Y, 20);
                 projectile.localAI[0] = 1f;
             }
             int num666 = 8;
