@@ -1,11 +1,13 @@
 using System;
 using System.IO;
+using Terraria.Audio;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 using WarOfTheCosmos.Enums;
+using SoundType = Terraria.ModLoader.SoundType;
 
 namespace WarOfTheCosmos.NPCs.Boss
 {
@@ -16,6 +18,8 @@ namespace WarOfTheCosmos.NPCs.Boss
         public const int PAUSE_TIMER = 1;
         public const int COOLDOWN = 2;
         public const int LASER_TIMER = 3;
+
+        public const string PROJECT_TYPE = "Elementdisc";
 
         public enum States
         {
@@ -76,13 +80,13 @@ namespace WarOfTheCosmos.NPCs.Boss
                     FloatTowardsPlayer();
                     break;
                 case States.DashingFirstTime:
-                    DashingFirstTime();
+                    Dash(States.DashingSecondTime);
                     break;
                 case States.DashingSecondTime:
-                    DashingSecondTime();
+                    Dash(States.DashingThirdTime);
                     break;
                 case States.DashingThirdTime:
-                    DashingThirdTime();
+                    Dash(States.FloatTowards);
                     break;
                 //case States.MovingToPlayer:
                    //break;
@@ -105,24 +109,21 @@ namespace WarOfTheCosmos.NPCs.Boss
 
         private void FloatTowardsPlayer()
         {
-            //var player = Main.player[npc.target];
-            //var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
+            const float turnResistance = 100f; //the larger this is, the slower the npc will turn
+            const float speed = 20f;
 
-            //var speed = 1f; //make this whatever you want
-            //var move = moveTo - npc.Center; //this is how much your boss wants to move
-            //var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y); //fun with the Pythagorean Theorem
-            //npc.velocity = move * (speed / (float) magnitude);
             npc.ai[COOLDOWN]++;
+
             var player = Main.player[npc.target];
+            
             if (npc.target < 0 || npc.target == 255 || Main.player[npc.target].dead || !Main.player[npc.target].active)
             {
                 npc.TargetClosest(true);
             }
             npc.netUpdate = true;
-            var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
-            float turnResistance = 100f; //the larger this is, the slower the npc will turn
 
-            var speed = 20f;
+            var moveTo = player.Center;
+            
             var move = moveTo - npc.Center;
             var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
 
@@ -130,37 +131,53 @@ namespace WarOfTheCosmos.NPCs.Boss
             {
                 move *= (speed / (float)magnitude);
             }
+            
             move = (npc.velocity * turnResistance + move) / (turnResistance + 1f);
             magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
+            
             if (magnitude > speed)
             {
                 move *= (speed / (float)magnitude);
             }
+            
             npc.velocity = move;
 
-            //lasers
-            npc.ai[LASER_TIMER]++;
-            if (npc.ai[LASER_TIMER] >= 30)
-            {
-                float Speed = 30f;
-                Vector2 vector8 = new Vector2(npc.position.X + (npc.width / 2), npc.position.Y + (npc.height / 2));
-                int damage = 30;
-                int type = mod.ProjectileType("Elementdisc");
-                Main.PlaySound(SoundID.Item60, (int)npc.position.X, (int)npc.position.Y);
-                float rotation = (float)Math.Atan2(vector8.Y - (player.position.Y + (player.height * 0.5f)), vector8.X - (player.position.X + (player.width * 0.5f)));
-                int num54 = Projectile.NewProjectile(vector8.X, vector8.Y, (float)((Math.Cos(rotation) * Speed) * -1), (float)((Math.Sin(rotation) * Speed) * -1), type, damage, 0f, 0);
-                npc.ai[LASER_TIMER] = 0;
-            }
+            FireLaser(player);
 
-            if ((magnitude < 50) && (npc.ai[COOLDOWN] > 180)) //180 wait time
-            {
-                npc.ai[NPC_STATE] = (int)States.DashingFirstTime;
-                npc.ai[PAUSE_TIMER] = 30;
-            }
+            if (magnitude >= 50 || npc.ai[COOLDOWN] <= 180) return;
+
+            npc.ai[NPC_STATE] = (int)States.DashingFirstTime;
+            npc.ai[PAUSE_TIMER] = 30;
         }
 
-        private void DashingFirstTime()  
+        private void FireLaser(Player player)
         {
+            const float speed = 30f;
+            const int damage = 30;
+            var terraBladeSoundId = SoundID.Item60;
+
+            npc.ai[LASER_TIMER]++;
+            if (npc.ai[LASER_TIMER] < 30) return;
+            
+            var npcCenter = new Vector2(npc.position.X + (npc.width * 0.5f), npc.position.Y + (npc.height * 0.5f));
+            var playerCenter = new Vector2(player.position.X + (player.width * 0.5f), player.position.Y + (player.height * 0.5f));
+            
+            Main.PlaySound(terraBladeSoundId, (int) npc.position.X, (int) npc.position.Y);
+            
+            var rotation = (float) Math.Atan2(npcCenter.Y - playerCenter.Y, npcCenter.X - playerCenter.X);
+            var horizontalSpeed = (float)(Math.Cos(rotation) * speed) * -1;
+            var verticalSpeed = (float)(Math.Sin(rotation) * speed) * -1;
+            var type = mod.ProjectileType(PROJECT_TYPE);
+
+            Projectile.NewProjectile(npcCenter.X, npcCenter.Y, verticalSpeed , horizontalSpeed, type, damage, 0f, 0);
+
+            npc.ai[LASER_TIMER] = 0;
+        }
+
+        private void Dash(States nextState)
+        {
+            const float speed = 30f; //Charging is fast.
+
             npc.ai[PAUSE_TIMER]++;
 
             if (npc.ai[PAUSE_TIMER] <= 45)
@@ -170,59 +187,14 @@ namespace WarOfTheCosmos.NPCs.Boss
 
             var player = Main.player[npc.target];
             var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
-
-            var speed = 30f; //Charging is fast.
+            
             var move = moveTo - npc.Center;
             var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
             move *= (speed / (float) magnitude);
             npc.velocity = move;
             npc.ai[PAUSE_TIMER] = 0;
-            npc.ai[NPC_STATE] = (int)States.DashingSecondTime;
+            npc.ai[NPC_STATE] = (int) nextState;
             //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
-        }
-
-        private void DashingSecondTime()
-        {
-            npc.ai[PAUSE_TIMER]++;
-
-            if (npc.ai[PAUSE_TIMER] <= 45)
-            {
-                return; //Wait for 45 ticks
-            }
-
-            var player = Main.player[npc.target];
-            var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
-
-            var speed = 30f; //Charging is fast.
-            var move = moveTo - npc.Center;
-            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
-            move *= (speed / (float)magnitude);
-            npc.velocity = move;
-            npc.ai[PAUSE_TIMER] = 0;
-            npc.ai[NPC_STATE] = (int)States.DashingThirdTime;
-            //There are 60 ticks in one second, so this will make the NPC charge for 1 second before changing directions.
-        }
-
-        private void DashingThirdTime()
-        {
-            npc.ai[PAUSE_TIMER]++;
-
-            if (npc.ai[PAUSE_TIMER] <= 45)
-            {
-                return; //Wait for 45 ticks
-            }
-
-            var player = Main.player[npc.target];
-            var moveTo = player.Center; //This player is the same that was retrieved in the targeting section.
-
-            var speed = 30f; //Charging is fast.
-            var move = moveTo - npc.Center;
-            var magnitude = Math.Sqrt(move.X * move.X + move.Y * move.Y);
-            move *= (speed / (float)magnitude);
-            npc.velocity = move;
-            npc.ai[PAUSE_TIMER] = 0;
-            npc.ai[COOLDOWN] = 0;
-            npc.ai[NPC_STATE] = (int)States.FloatTowards;
         }
     }
 }
